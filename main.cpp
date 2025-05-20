@@ -47,6 +47,24 @@ struct Aircraft {
 };
 
 
+// ===================== GLOBAL VARIABLES =====================
+vector<Flight> flights;
+vector<Passenger> passengers;
+vector<Booking> bookings;
+vector<Aircraft> aircrafts;
+vector<BankAccount> bankRecords = {
+    {"Abebe Bikila", 8500.00},
+    {"Abel Tesfaye", 12000.00},
+    {"Haile Gebre", 15000.00},
+    {"Tirunesh Dibaba", 9000.00},
+    {"Abe Kebe", 18000.00},
+    {"Meseret Yimer", 7500.00},
+    {"Hanan Daye", 6000.00},
+    {"Abiy Yosi", 5000.00}
+};
+queue<string> userQueue;
+
+
 
 // ===================== FUNCTION DECLARATIONS =====================
 // Utility Functions
@@ -838,6 +856,15 @@ void adminCancelBooking() {
     saveData();
     cout << "Admin: Booking cancelled successfully!\n";
 
+}
+// ===================== BANK FUNCTIONS =====================
+void displayBankStatement() {
+    cout << "\n===== BANK STATEMENT =====";
+    cout << "\n" << left << setw(25) << "Name" << "Balance (ETB)\n";
+    cout << "--------------------------------\n";
+    for (const auto& account : bankRecords) {
+        cout << setw(25) << account.name << account.balance << "\n";
+    }
 }
 
 
