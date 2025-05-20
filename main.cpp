@@ -604,6 +604,240 @@ void postponeBooking() {
 }
 
 
+// ===================== ADMIN FUNCTIONS =====================
+bool authenticateAdmin() {
+    string password;
+    cout << "Enter admin password: ";
+    cin >> password;
+    return password == "ela2121";
+}
+
+void addAircraft() {
+    Aircraft a;
+    cout << "Enter plane model: ";
+    cin.ignore();
+    getline(cin, a.model);
+    
+    cout << "Enter total seats: ";
+    cin >> a.totalSeats;
+    
+    cout << "Enter features (comma separated): ";
+    string features;
+    cin.ignore();
+    getline(cin, features);
+    
+    stringstream ss(features);
+    string feature;
+    while (getline(ss, feature, ',')) {
+        a.features.push_back(feature);
+    }
+    
+    aircrafts.push_back(a);
+    cout << "Aircraft added successfully!\n";
+    saveData();
+}
+
+void addFlight() {
+    if (aircrafts.empty()) {
+        cout << "No aircrafts available! Add one first.\n";
+        return;
+    }
+
+    cout << "\nAvailable Aircrafts:\n";
+    for (const auto& a : aircrafts) {
+        cout << "- " << a.model << " (" << a.totalSeats << " seats)\n";
+    }
+
+    Flight f;
+    cout << "\nEnter flight number: ";
+    cin >> f.flightNo;
+    
+    cout << "Select plane model: ";
+    string selectedModel;
+    cin.ignore();
+    getline(cin, selectedModel);
+    
+    auto plane = find_if(aircrafts.begin(), aircrafts.end(),
+        [&selectedModel](const Aircraft& a) { return a.model == selectedModel; });
+    
+    if (plane == aircrafts.end()) {
+        cout << "Invalid plane model!\n";
+        return;
+    }
+
+    f.plane = plane->model;
+    f.totalSeats = plane->totalSeats;
+    f.passengerHead = nullptr;
+    initializeSeats(f);
+    
+    cout << "Enter destination: ";
+    getline(cin, f.destination);
+    
+    cout << "Enter day/time: ";
+    getline(cin, f.dayTime);
+    
+    cout << "Enter distance: ";
+    getline(cin, f.distance);
+    
+    cout << "Enter duration: ";
+    getline(cin, f.duration);
+    
+    cout << "Enter price: $";
+    cin >> f.price;
+
+    flights.push_back(f);
+    saveData();
+    cout << "Flight added successfully using " << plane->model << "!\n";
+}
+
+void displayCurrentState() {
+    cout << "\n===== CURRENT SYSTEM STATE =====";
+    cout << "\n\nAIRCRAFTS:\n";
+    if (aircrafts.empty()) {
+        cout << "No aircrafts available.\n";
+    } else {
+        for (const auto& a : aircrafts) {
+            cout << "- " << a.model << " (" << a.totalSeats << " seats)\n";
+        }
+    }
+
+    cout << "\nFLIGHTS:\n";
+    if (flights.empty()) {
+        cout << "No flights scheduled.\n";
+    } else {
+        for (const auto& f : flights) {
+            cout << f.flightNo << " to " << f.destination 
+                 << " (" << f.plane << ") - " << f.totalSeats << " seats available\n";
+        }
+    }
+}
+
+void deleteAircraft() {
+    displayCurrentState();
+    if (aircrafts.empty()) {
+        cout << "No aircrafts to delete.\n";
+        return;
+    }
+
+    string model;
+    cout << "\nEnter aircraft model to delete: ";
+    cin.ignore();
+    getline(cin, model);
+
+    auto it = find_if(aircrafts.begin(), aircrafts.end(),
+        [&model](const Aircraft& a) { return a.model == model; });
+
+    if (it != aircrafts.end()) {
+        bool inUse = any_of(flights.begin(), flights.end(),
+            [&model](const Flight& f) { return f.plane == model; });
+
+        if (inUse) {
+            cout << "Cannot delete! Aircraft is in use by flights.\n";
+        } else {
+            aircrafts.erase(it);
+            cout << "Aircraft deleted successfully!\n";
+            saveData();
+        }
+    } else {
+        cout << "Aircraft not found!\n";
+    }
+}
+
+void deleteFlight() {
+    displayCurrentState();
+    if (flights.empty()) {
+        cout << "No flights to delete.\n";
+        return;
+    }
+
+    string flightNo;
+    cout << "\nEnter flight number to delete: ";
+    cin >> flightNo;
+
+    auto it = find_if(flights.begin(), flights.end(), 
+        [&flightNo](const Flight& f) { return f.flightNo == flightNo; });
+
+    if (it != flights.end()) {
+        // Free passenger memory
+        Passenger* current = it->passengerHead;
+        while (current) {
+            Passenger* temp = current;
+            current = current->next;
+            delete temp;
+        }
+        
+        flights.erase(it);
+        cout << "Flight deleted successfully!\n";
+        saveData();
+    } else {
+        cout << "Flight not found!\n";
+    }
+}
+
+void displayPassengerWithDestination() {
+    if (passengers.empty()) {
+        cout << "\nNo passengers registered yet.\n";
+        return;
+    }
+
+    cout << "\n===== ALL PASSENGERS =====";
+    cout << left << setw(20) << "\nName" << setw(15) << "Destination" 
+         << setw(12) << "Passport" << setw(12) << "ID" 
+         << "Registration Date\n";
+    
+    for (const auto& p : passengers) {
+        cout << setw(20) << p.name << setw(15) << p.destination
+             << setw(12) << p.passport << setw(12) << p.id
+             << timeToString(p.registrationDate) << "\n";
+    }
+}
+
+void displayBookingsWithEmptyCheck() {
+    if (bookings.empty()) {
+        cout << "\nNo bookings found in the system.\n";
+        return;
+    }
+
+    cout << "\n===== ALL BOOKINGS =====";
+    cout << left << setw(10) << "\nBooking ID" << setw(10) << "Flight" 
+         << setw(12) << "Passenger ID" << setw(10) << "Seat" 
+         << setw(20) << "Booking Time" << "Status\n";
+    
+    for (const auto& b : bookings) {
+        cout << setw(10) << b.bookingId << setw(10) << b.flightNo 
+             << setw(12) << b.passengerId << setw(10) << b.seatNumber
+             << setw(20) << timeToString(b.bookingTime) 
+             << (b.isPaid ? "Paid" : "Unpaid") << "\n";
+    }
+}
+
+void adminCancelBooking() {
+    displayBookingsWithEmptyCheck();
+    if (bookings.empty()) return;
+
+    string bookingId;
+    cout << "Enter booking ID to cancel: ";
+    cin >> bookingId;
+
+    auto booking = find_if(bookings.begin(), bookings.end(), 
+        [&bookingId](const Booking& b) { return b.bookingId == bookingId; });
+
+    if (booking == bookings.end()) {
+        cout << "Booking not found!\n";
+        return;
+    }
+
+    auto flight = find_if(flights.begin(), flights.end(), 
+        [&booking](const Flight& f) { return f.flightNo == booking->flightNo; });
+
+    if (flight != flights.end()) {
+        removePassengerFromFlight(*flight, booking->passengerId);
+    }
+
+    bookings.erase(booking);
+    saveData();
+    cout << "Admin: Booking cancelled successfully!\n";
+}
 
 
 
