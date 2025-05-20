@@ -288,7 +288,40 @@ bool bookSeat(Flight& flight, Passenger* passenger, const string& seatNumber) {
     return true;
 }
 
+// ===================== PASSENGER LIST MANAGEMENT =====================
+void addPassengerToFlight(Flight& flight, Passenger* passenger) {
+    passenger->next = nullptr;
+    passenger->prev = nullptr;
+    
+    if (!flight.passengerHead) {
+        flight.passengerHead = passenger;
+    } else {
+        Passenger* current = flight.passengerHead;
+        while (current->next) {
+            current = current->next;
+        }
+        current->next = passenger;
+        passenger->prev = current;
+    }
+    flight.totalSeats--;
+}
 
+void removePassengerFromFlight(Flight& flight, const string& passengerId) {
+    Passenger* current = flight.passengerHead;
+    while (current) {
+        if (current->id == passengerId) {
+            if (current->prev) current->prev->next = current->next;
+            if (current->next) current->next->prev = current->prev;
+            if (current == flight.passengerHead) flight.passengerHead = current->next;
+            
+            flight.seatMap[current->seatNumber] = false;
+            flight.totalSeats++;
+            delete current;
+            return;
+        }
+        current = current->next;
+    }
+}
 
 
 
