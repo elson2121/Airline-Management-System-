@@ -362,6 +362,246 @@ void searchByDestination() {
     if (!found) cout << "No flights found!\n";
 }
 
+// ===================== BOOKING FUNCTIONS =====================
+void bookFlight() {
+    viewAllFlights();
+    string flightNo;
+    cout << "\nEnter flight number: ";
+    cin >> flightNo;
+    
+    auto flightIt = find_if(flights.begin(), flights.end(), 
+        [&flightNo](const Flight& f) { return f.flightNo == flightNo; });
+    
+    if (flightIt == flights.end()) {
+        cout << "Flight not found!\n";
+        return;
+    }
+
+    if (flightIt->totalSeats <= 0) {
+        cout << "No seats available!\n";
+        return;
+    }
+
+    displaySeatMap(*flightIt);
+
+    Passenger* p = new Passenger();
+    do {
+        cout << "Enter your name (max 20 chars): ";
+        cin.ignore();
+        getline(cin, p->name);
+    } while (!validateInput(p->name));
+
+    do {
+        cout << "Enter passport (max 10 chars): ";
+        cin >> p->passport;
+    } while (!validatePassport(p->passport));
+
+    do {
+        cout << "Enter ID (max 10 digits): ";
+        cin >> p->id;
+    } while (!validateID(p->id));
+
+    do {
+        cout << "Enter phone (max 15 digits): ";
+        cin >> p->contact;
+    } while (!validatePhone(p->contact));
+
+    p->destination = flightIt->destination;
+    p->registrationDate = getCurrentTime();
+
+    string seat;
+    bool seatBooked = false;
+    while (!seatBooked) {
+        cout << "Choose your seat (e.g., A1, B3): ";
+        cin >> seat;
+        seatBooked = bookSeat(*flightIt, p, seat);
+    }
+
+    // Enhanced Payment Processing
+    if (isPassengerInBankSystem(p->name)) {
+        double currentBalance = getPassengerBalance(p->name);
+        cout << "\nFlight cost: " << flightIt->price << " ETB";
+        cout << "\nYour current balance: " << currentBalance << " ETB";
+        
+        if (currentBalance >= flightIt->price) {
+            if (processPayment(p->name, flightIt->price)) {
+                cout << "\nPayment processed successfully!";
+                cout << "\nNew balance: " << getPassengerBalance(p->name) << " ETB";
+                
+                Booking b;
+                b.bookingId = "B" + to_string(bookings.size() + 1000);
+                b.flightNo = flightNo;
+                b.passengerId = p->id;
+                b.seatNumber = seat;
+                b.bookingTime = getCurrentTime();
+                b.isPaid = true;
+
+                addPassengerToFlight(*flightIt, p);
+                passengers.push_back(*p);
+                bookings.push_back(b);
+                userQueue.push(p->id);
+
+                cout << "\nBooking successful! Your Booking ID: " << b.bookingId << "\n";
+            } else {
+                cout << "\nPayment processing failed!\n";
+                delete p;
+                return;
+            }
+        } else {
+            cout << "\nInsufficient funds!\n";
+            delete p;
+            return;
+        }
+    } else {
+        cout << "\nTotal to pay: " << flightIt->price << " ETB";
+        cout << "\nConfirm payment? (1=Yes, 0=No): ";
+        int confirm;
+        cin >> confirm;
+
+        if (confirm == 1) {
+            Booking b;
+            b.bookingId = "B" + to_string(bookings.size() + 1000);
+            b.flightNo = flightNo;
+            b.passengerId = p->id;
+            b.seatNumber = seat;
+            b.bookingTime = getCurrentTime();
+            b.isPaid = true;
+
+            addPassengerToFlight(*flightIt, p);
+            passengers.push_back(*p);
+            bookings.push_back(b);
+            userQueue.push(p->id);
+
+            cout << "\nBooking successful! Your Booking ID: " << b.bookingId << "\n";
+        } else {
+            delete p;
+            cout << "Booking cancelled.\n";
+        }
+    }
+    saveData();
+}
+
+void cancelBooking() {
+    string bookingId;
+    cout << "Enter booking ID: ";
+    cin >> bookingId;
+
+    auto booking = find_if(bookings.begin(), bookings.end(), 
+        [&bookingId](const Booking& b) { return b.bookingId == bookingId; });
+
+    if (booking == bookings.end()) {
+        cout << "Booking not found!\n";
+        return;
+    }
+
+    auto flight = find_if(flights.begin(), flights.end(), 
+        [&booking](const Flight& f) { return f.flightNo == booking->flightNo; });
+
+    if (flight != flights.end()) {
+        removePassengerFromFlight(*flight, booking->passengerId);
+    }
+
+    bookings.erase(booking);
+    saveData();
+    cout << "Booking cancelled successfully!\n";
+}
+
+void viewCurrentBooking() {
+    string passengerId;
+    cout << "Enter your ID: ";
+    cin >> passengerId;
+
+    bool found = false;
+    for (const auto& b : bookings) {
+        if (b.passengerId == passengerId) {
+            found = true;
+            cout << "\n===== YOUR BOOKING =====";
+            cout << "\nBooking ID: " << b.bookingId;
+            cout << "\nFlight: " << b.flightNo;
+            cout << "\nSeat: " << b.seatNumber;
+            cout << "\nBooking Time: " << timeToString(b.bookingTime);
+            cout << "\nStatus: " << (b.isPaid ? "Paid" : "Unpaid") << "\n";
+            
+            auto passenger = find_if(passengers.begin(), passengers.end(),
+                [&passengerId](const Passenger& p) { return p.id == passengerId; });
+            
+            if (passenger != passengers.end()) {
+                cout << "\nPassenger Details:";
+                cout << "\nName: " << passenger->name;
+                cout << "\nPassport: " << passenger->passport;
+                cout << "\nContact: " << passenger->contact << "\n";
+            }
+            break;
+        }
+    }
+
+    if (!found) {
+        cout << "No booking found for this ID!\n";
+    }
+}
+
+void postponeBooking() {
+    string bookingId, password;
+    cout << "Enter your booking ID: ";
+    cin >> bookingId;
+    cout << "Enter flight password to verify: ";
+    cin >> password;
+
+    auto booking = find_if(bookings.begin(), bookings.end(),
+        [&bookingId](const Booking& b) { return b.bookingId == bookingId; });
+
+    if (booking == bookings.end()) {
+        cout << "Booking not found!\n";
+        return;
+    }
+
+    if (password != "flight123") {
+        cout << "Invalid password!\n";
+        return;
+    }
+
+    auto flight = find_if(flights.begin(), flights.end(),
+        [&booking](const Flight& f) { return f.flightNo == booking->flightNo; });
+
+    if (flight != flights.end()) {
+        flight->seatMap[booking->seatNumber] = false;
+        flight->totalSeats++;
+
+        Passenger p;
+        cout << "\nEnter new booking details:\n";
+        cout << "Name: ";
+        cin.ignore();
+        getline(cin, p.name);
+        
+        cout << "Passport: ";
+        cin >> p.passport;
+        
+        cout << "ID: ";
+        cin >> p.id;
+        
+        cout << "Contact: ";
+        cin >> p.contact;
+        
+        displaySeatMap(*flight);
+        
+        string newSeat;
+        bool seatBooked = false;
+        while (!seatBooked) {
+            cout << "Choose your new seat: ";
+            cin >> newSeat;
+            seatBooked = bookSeat(*flight, &p, newSeat);
+        }
+
+        booking->passengerId = p.id;
+        booking->seatNumber = newSeat;
+        booking->bookingTime = getCurrentTime();
+
+        cout << "Booking postponed successfully!\n";
+        saveData();
+    } else {
+        cout << "Flight not found!\n";
+    }
+}
 
 
 
