@@ -837,10 +837,75 @@ void adminCancelBooking() {
     bookings.erase(booking);
     saveData();
     cout << "Admin: Booking cancelled successfully!\n";
+
 }
 
 
 
+// ===================== MENU FUNCTIONS =====================
+void adminMenu() {
+    if (!authenticateAdmin()) {
+        cout << "Access denied!\n";
+        return;
+    }
+
+    int choice;
+    do {
+        cout << "\n===== ADMIN MENU =====";
+        cout << "\n1. Add Aircraft";
+        cout << "\n2. Add Flight";
+        cout << "\n3. Delete Aircraft";
+        cout << "\n4. Delete Flight";
+        cout << "\n5. View Current State";
+        cout << "\n6. View All Passengers";
+        cout << "\n7. View All Bookings";
+        cout << "\n8. Cancel Any Booking";
+        cout << "\n9. Return to Main Menu";
+        cout << "\nEnter choice: ";
+        cin >> choice;
+
+        switch (choice) {
+            case 1: addAircraft(); break;
+            case 2: addFlight(); break;
+            case 3: deleteAircraft(); break;
+            case 4: deleteFlight(); break;
+            case 5: displayCurrentState(); break;
+            case 6: displayPassengerWithDestination(); break;
+            case 7: displayBookingsWithEmptyCheck(); break;
+            case 8: adminCancelBooking(); break;
+            case 9: break;
+            default: cout << "Invalid choice!\n";
+        }
+    } while (choice != 9);
+}
+
+void passengerMenu() {
+    loadData();
+    int choice;
+    do {
+        cout << "\n===== PASSENGER MENU =====";
+        cout << "\n1. View All Flights";
+        cout << "\n2. Search by Destination";
+        cout << "\n3. Book a Flight";
+        cout << "\n4. View Current Booking";
+        cout << "\n5. Postpone Booking";
+        cout << "\n6. Cancel Booking";
+        cout << "\n7. Back to Main Menu";
+        cout << "\nEnter choice: ";
+        cin >> choice;
+
+        switch (choice) {
+            case 1: viewAllFlights(); break;
+            case 2: searchByDestination(); break;
+            case 3: bookFlight(); break;
+            case 4: viewCurrentBooking(); break;
+            case 5: postponeBooking(); break;
+            case 6: cancelBooking(); break;
+            case 7: break;
+            default: cout << "Invalid choice!\n";
+        }
+    } while (choice != 7);
+}
 
 
 
