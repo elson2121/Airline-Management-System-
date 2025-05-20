@@ -234,14 +234,59 @@ void loadData() {
     }
 }
 
+// ===================== SEAT MANAGEMENT =====================
+void initializeSeats(Flight& flight) {
+    flight.seatMap.clear();
+    for (int row = 1; row <= 10; row++) {
+        for (char col = 'A'; col <= 'J'; col++) {
+            string seat = string(1, col) + to_string(row);
+            flight.seatMap[seat] = false;
+        }
+    }
+}
 
+void displaySeatMap(const Flight& flight) {
+    cout << "\n===== SEAT MAP FOR FLIGHT " << flight.flightNo << " =====";
+    cout << "\n\n  ";
+    for (char col = 'A'; col <= 'J'; col++) {
+        cout << setw(4) << col;
+    }
+    cout << "\n";
 
+    for (int row = 1; row <= 10; row++) {
+        cout << setw(2) << row;
+        for (char col = 'A'; col <= 'J'; col++) {
+            string seat = string(1, col) + to_string(row);
+            cout << setw(4) << (flight.seatMap.at(seat) ? "[X]" : "[ ]");
+        }
+        cout << "\n";
+    }
+    cout << "\n[X] = Booked\t[ ] = Available\n";
+}
 
+bool bookSeat(Flight& flight, Passenger* passenger, const string& seatNumber) {
+    string upperSeat = seatNumber;
+    transform(upperSeat.begin(), upperSeat.end(), upperSeat.begin(), ::toupper);
 
-here is your code !!!
+    if (upperSeat.length() < 2 || !isalpha(upperSeat[0]) || !isdigit(upperSeat[1])) {
+        cout << "Invalid seat format! Use format like A1, B2, etc.\n";
+        return false;
+    }
 
+    if (flight.seatMap.find(upperSeat) == flight.seatMap.end()) {
+        cout << "Seat doesn't exist on this aircraft!\n";
+        return false;
+    }
 
+    if (flight.seatMap[upperSeat]) {
+        cout << "Seat already booked! Please choose another seat.\n";
+        return false;
+    }
 
+    flight.seatMap[upperSeat] = true;
+    passenger->seatNumber = upperSeat;
+    return true;
+}
 
 
 
