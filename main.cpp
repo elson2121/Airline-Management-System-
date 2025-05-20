@@ -323,6 +323,44 @@ void removePassengerFromFlight(Flight& flight, const string& passengerId) {
     }
 }
 
+// ===================== FLIGHT FUNCTIONS =====================
+void viewAllFlights() {
+    loadData();
+    cout << "\n===== AVAILABLE FLIGHTS =====";
+    cout << left << setw(8) << "\nCode" << setw(15) << "Destination" 
+         << setw(14) << "Departure" << setw(10) << "Distance"
+         << setw(10) << "Duration" << setw(12) << "Aircraft" 
+         << setw(6) << "Seats" << "Price\n";
+    
+    for (const auto& f : flights) {
+        cout << setw(8) << f.flightNo << setw(15) << f.destination 
+             << setw(14) << f.dayTime << setw(10) << f.distance
+             << setw(10) << f.duration << setw(12) << f.plane 
+             << setw(6) << f.totalSeats << "$" << f.price << "\n";
+    }
+}
+
+void searchByDestination() {
+    string dest;
+    cout << "Enter destination: ";
+    cin.ignore();
+    getline(cin, dest);
+    transform(dest.begin(), dest.end(), dest.begin(), ::tolower);
+
+    cout << "\n===== SEARCH RESULTS =====\n";
+    bool found = false;
+    for (const auto& f : flights) {
+        string fdest = f.destination;
+        transform(fdest.begin(), fdest.end(), fdest.begin(), ::tolower);
+        if (fdest.find(dest) != string::npos) {
+            cout << "Flight: " << f.flightNo << " | " << f.destination 
+                 << " | " << f.dayTime << " | " << f.duration 
+                 << " | Seats: " << f.totalSeats << " | Price: $" << f.price << "\n";
+            found = true;
+        }
+    }
+    if (!found) cout << "No flights found!\n";
+}
 
 
 
