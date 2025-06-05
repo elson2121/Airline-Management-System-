@@ -10,6 +10,8 @@
 #include <queue>
 #include <map>
 
+#include <memory>
+
 using namespace std;
 
 // ===================== DATA STRUCTURES =====================
@@ -22,15 +24,15 @@ struct Passenger {
     string name, passport, id, contact;
     string seatNumber, destination;
     time_t registrationDate;
-    Passenger* next;
-    Passenger* prev;
+    Passenger* next = nullptr;
+    Passenger* prev = nullptr;
 };
 
 struct Flight {
     string flightNo, destination, dayTime, distance, plane, duration;
     int totalSeats;
     float price;
-    Passenger* passengerHead;
+    Passenger* passengerHead = nullptr;
     map<string, bool> seatMap;
 };
 
@@ -168,88 +170,203 @@ bool processPayment(const string& name, double amount) {
 
 // ===================== FILE HANDLING =====================
 void saveData() {
-    ofstream ffile("flights.txt");
-    for (const auto& f : flights) {
-        ffile << f.flightNo << "," << f.destination << "," << f.dayTime << ","
-              << f.distance << "," << f.plane << "," << f.duration << ","
-              << f.totalSeats << "," << f.price << "\n";
-    }
-    ffile.close();
+   try {
 
-    ofstream pfile("passengers.txt");
-    for (const auto& p : passengers) {
-        pfile << p.name << "," << p.passport << "," << p.id << "," 
-              << p.contact << "," << p.destination << "," << p.registrationDate << "\n";
-    }
-    pfile.close();
+        ofstream ffile("flights.txt");
 
-    ofstream bfile("bookings.txt");
-    for (const auto& b : bookings) {
-        bfile << b.bookingId << "," << b.flightNo << "," << b.passengerId << ","
-              << b.seatNumber << "," << b.bookingTime << "," << b.isPaid << "\n";
+        if (!ffile.is_open()) throw runtime_error("Cannot open flights.txt for writing");
+
+        for (const auto& f : flights) {
+
+            ffile << f.flightNo << "," << f.destination << "," << f.dayTime << ","
+
+                  << f.distance << "," << f.plane << "," << f.duration << ","
+
+                  << f.totalSeats << "," << f.price << "\n";
+
+        }
+
+        ffile.close();
+
+         ofstream pfile("passengers.txt");
+
+        if (!pfile.is_open()) throw runtime_error("Cannot open passengers.txt for writing");
+
+        for (const auto& p : passengers) {
+
+            pfile << p.name << "," << p.passport << "," << p.id << "," 
+
+                  << p.contact << "," << p.destination << "," << p.registrationDate << "\n";
+
+        }
+
+        pfile.close();
+
+
+
+        ofstream bfile("bookings.txt");
+
+        if (!bfile.is_open()) throw runtime_error("Cannot open bookings.txt for writing");
+
+        for (const auto& b : bookings) {
+
+            bfile << b.bookingId << "," << b.flightNo << "," << b.passengerId << ","
+
+                  << b.seatNumber << "," << b.bookingTime << "," << b.isPaid << "\n";
+
+        }
+
+        bfile.close();
+
+    } catch (const exception& e) {
+
+        cout << "Error saving data: " << e.what() << "\n";
     }
-    bfile.close();
+
 }
 
 void loadData() {
-    ifstream ffile("flights.txt");
-    if (ffile) {
-        flights.clear();
-        string line;
-        while (getline(ffile, line)) {
-            stringstream ss(line);
-            Flight f;
-            getline(ss, f.flightNo, ',');
-            getline(ss, f.destination, ',');
-            getline(ss, f.dayTime, ',');
-            getline(ss, f.distance, ',');
-            getline(ss, f.plane, ',');
-            getline(ss, f.duration, ',');
-            ss >> f.totalSeats;
-            ss.ignore();
-            ss >> f.price;
-            f.passengerHead = nullptr;
-            flights.push_back(f);
+    try {
+
+        ifstream ffile("flights.txt");
+
+        if (ffile.is_open()) {
+
+            flights.clear();
+
+            string line;
+
+            while (getline(ffile, line)) {
+
+                stringstream ss(line);
+
+                Flight f;
+
+                getline(ss, f.flightNo, ',');
+
+                getline(ss, f.destination, ',');
+
+                getline(ss, f.dayTime, ',');
+
+                getline(ss, f.distance, ',');
+
+                getline(ss, f.plane, ',');
+
+                getline(ss, f.duration, ',');
+
+                ss >> f.totalSeats;
+
+                ss.ignore();
+
+                ss >> f.price;
+
+                f.passengerHead = nullptr;
+
+                initializeSeats(f);
+
+                flights.push_back(f);
+
+            }
+
+            ffile.close();
         }
-        ffile.close();
+        
+
+      ifstream pfile("passengers.txt");
+
+        if (pfile.is_open()) {
+
+            passengers.clear();
+
+            string line;
+
+            while (getline(pfile, line)) {
+
+                stringstream ss(line);
+
+                Passenger p;
+
+                getline(ss, p.name, ',');
+
+                getline(ss, p.passport, ',');
+
+                getline(ss, p.id, ',');
+
+                getline(ss, p.contact, ',');
+
+                getline(ss, p.destination, ',');
+
+                ss >> p.registrationDate;
+
+                passengers.push_back(p);
+
+            }
+
+            pfile.close();
+        }
+      
+     ifstream bfile("bookings.txt");
+
+        if (bfile.is_open()) {
+
+            bookings.clear();
+
+            string line;
+
+            while (getline(bfile, line)) {
+
+                stringstream ss(line);
+
+                Booking b;
+
+                getline(ss, b.bookingId, ',');
+
+                getline(ss, b.flightNo, ',');
+
+                getline(ss, b.passengerId, ',');
+
+                getline(ss, b.seatNumber, ',');
+
+                ss >> b.bookingTime;
+
+                ss.ignore();
+
+                ss >> b.isPaid;
+
+                bookings.push_back(b);
+
+
+
+                // Update seatMap for the corresponding flight
+
+                auto flight = find_if(flights.begin(), flights.end(),
+
+                    [&b](const Flight& f) { return f.flightNo == b.flightNo; });
+
+                if (flight != flights.end()) {
+
+                    if (flight->seatMap.find(b.seatNumber) != flight->seatMap.end()) {
+
+                        flight->seatMap[b.seatNumber] = true;
+
+                        flight->totalSeats--;
+
+                    }
+
+                }
+
+            }
+
+            bfile.close();
+
+        }
+
+    } catch (const exception& e) {
+
+        cout << "Error loading data: " << e.what() << "\n";
+
     }
 
-    ifstream pfile("passengers.txt");
-    if (pfile) {
-        passengers.clear();
-        string line;
-        while (getline(pfile, line)) {
-            stringstream ss(line);
-            Passenger p;
-            getline(ss, p.name, ',');
-            getline(ss, p.passport, ',');
-            getline(ss, p.id, ',');
-            getline(ss, p.contact, ',');
-            getline(ss, p.destination, ',');
-            ss >> p.registrationDate;
-            passengers.push_back(p);
-        }
-        pfile.close();
-    }
-
-    ifstream bfile("bookings.txt");
-    if (bfile) {
-        bookings.clear();
-        string line;
-        while (getline(bfile, line)) {
-            stringstream ss(line);
-            Booking b;
-            getline(ss, b.bookingId, ',');
-            getline(ss, b.flightNo, ',');
-            getline(ss, b.passengerId, ',');
-            getline(ss, b.seatNumber, ',');
-            ss >> b.bookingTime;
-            ss.ignore();
-            ss >> b.isPaid;
-            bookings.push_back(b);
-        }
-        bfile.close();
-    }
 }
 
 // ===================== SEAT MANAGEMENT =====================
@@ -299,6 +416,21 @@ bool bookSeat(Flight& flight, Passenger* passenger, const string& seatNumber) {
     if (flight.seatMap[upperSeat]) {
         cout << "Seat already booked! Please choose another seat.\n";
         return false;
+        }
+
+
+
+    // Check if seat is already booked in bookings for this flight
+
+    for (const auto& booking : bookings) {
+
+        if (booking.flightNo == flight.flightNo && booking.seatNumber == upperSeat) {
+
+            cout << "Seat already reserved in booking system! Please choose another seat.\n";
+
+            return false;
+
+        }
     }
 
     flight.seatMap[upperSeat] = true;
@@ -361,7 +493,7 @@ void viewAllFlights() {
 void searchByDestination() {
     string dest;
     cout << "Enter destination: ";
-    cin.ignore();
+     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     getline(cin, dest);
     transform(dest.begin(), dest.end(), dest.begin(), ::tolower);
 
@@ -386,6 +518,18 @@ void bookFlight() {
     string flightNo;
     cout << "\nEnter flight number: ";
     cin >> flightNo;
+if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for flight number!\n";
+
+        return;
+
+    }
+
     
     auto flightIt = find_if(flights.begin(), flights.end(), 
         [&flightNo](const Flight& f) { return f.flightNo == flightNo; });
@@ -402,26 +546,79 @@ void bookFlight() {
 
     displaySeatMap(*flightIt);
 
-    Passenger* p = new Passenger();
+     unique_ptr<Passenger> p = make_unique<Passenger>();
+
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     do {
         cout << "Enter your name (max 20 chars): ";
-        cin.ignore();
+       
         getline(cin, p->name);
+           if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for name!\n";
+
+        }
     } while (!validateInput(p->name));
 
     do {
         cout << "Enter passport (max 10 chars): ";
         cin >> p->passport;
+          if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for passport!\n";
+
+        }
     } while (!validatePassport(p->passport));
 
     do {
         cout << "Enter ID (max 10 digits): ";
         cin >> p->id;
+         if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for ID!\n";
+
+        }
+
+        // Check for duplicate ID on this flight
+
+        if (any_of(bookings.begin(), bookings.end(), 
+
+            [&p, &flightNo](const Booking& b) { 
+
+                return b.passengerId == p->id && b.flightNo == flightNo; })) {
+
+            cout << "This ID is already booked on this flight!\n";
+
+            return;
+
+        }
+        
     } while (!validateID(p->id));
 
     do {
         cout << "Enter phone (max 15 digits): ";
         cin >> p->contact;
+          if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for phone!\n";
+
+        }
     } while (!validatePhone(p->contact));
 
     p->destination = flightIt->destination;
@@ -432,10 +629,22 @@ void bookFlight() {
     while (!seatBooked) {
         cout << "Choose your seat (e.g., A1, B3): ";
         cin >> seat;
-        seatBooked = bookSeat(*flightIt, p, seat);
+        if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for seat!\n";
+
+            continue;
+
+        }
+
+        seatBooked = bookSeat(*flightIt, p.get(), seat);
     }
 
-    // Enhanced Payment Processing
+    
     if (isPassengerInBankSystem(p->name)) {
         double currentBalance = getPassengerBalance(p->name);
         cout << "\nFlight cost: " << flightIt->price << " ETB";
@@ -450,11 +659,13 @@ void bookFlight() {
                 b.bookingId = "B" + to_string(bookings.size() + 1000);
                 b.flightNo = flightNo;
                 b.passengerId = p->id;
-                b.seatNumber = seat;
+                b.seatNumber = p->seatNumber;
                 b.bookingTime = getCurrentTime();
                 b.isPaid = true;
 
-                addPassengerToFlight(*flightIt, p);
+                    Passenger* flightPassenger = new Passenger(*p);
+
+                addPassengerToFlight(*flightIt, flightPassenger);
                 passengers.push_back(*p);
                 bookings.push_back(b);
                 userQueue.push(p->id);
@@ -462,12 +673,21 @@ void bookFlight() {
                 cout << "\nBooking successful! Your Booking ID: " << b.bookingId << "\n";
             } else {
                 cout << "\nPayment processing failed!\n";
-                delete p;
+
+              // Revert seat booking if payment fails
+
+                flightIt->seatMap[p->seatNumber] = false;
+
+                flightIt->totalSeats++; 
                 return;
             }
         } else {
             cout << "\nInsufficient funds!\n";
-            delete p;
+          // Revert seat booking if insufficient funds
+
+            flightIt->seatMap[p->seatNumber] = false;
+
+            flightIt->totalSeats++;
             return;
         }
     } else {
@@ -475,34 +695,80 @@ void bookFlight() {
         cout << "\nConfirm payment? (1=Yes, 0=No): ";
         int confirm;
         cin >> confirm;
+          if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for confirmation!\n";
+
+            // Revert seat booking if input fails
+
+            flightIt->seatMap[p->seatNumber] = false;
+
+            flightIt->totalSeats++;
+
+            return;
+
+        }
 
         if (confirm == 1) {
             Booking b;
             b.bookingId = "B" + to_string(bookings.size() + 1000);
             b.flightNo = flightNo;
             b.passengerId = p->id;
-            b.seatNumber = seat;
+            b.seatNumber = p->seatNumber; 
             b.bookingTime = getCurrentTime();
             b.isPaid = true;
 
-            addPassengerToFlight(*flightIt, p);
+              Passenger* flightPassenger = new Passenger(*p);
+
+            addPassengerToFlight(*flightIt, flightPassenger);
             passengers.push_back(*p);
             bookings.push_back(b);
             userQueue.push(p->id);
 
             cout << "\nBooking successful! Your Booking ID: " << b.bookingId << "\n";
         } else {
-            delete p;
+             
             cout << "Booking cancelled.\n";
+               // Revert seat booking if cancelled
+
+            flightIt->seatMap[p->seatNumber] = false;
+
+            flightIt->totalSeats++;
         }
     }
-    saveData();
+    
+
+    try {
+
+        saveData();
+
+    } catch (const exception& e) {
+
+        cout << "Error saving data: " << e.what() << "\n";
+
+    }
 }
 
 void cancelBooking() {
     string bookingId;
     cout << "Enter booking ID: ";
     cin >> bookingId;
+
+     if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for booking ID!\n";
+
+        return;
+
+    }
 
     auto booking = find_if(bookings.begin(), bookings.end(), 
         [&bookingId](const Booking& b) { return b.bookingId == bookingId; });
@@ -520,7 +786,15 @@ void cancelBooking() {
     }
 
     bookings.erase(booking);
-    saveData();
+   try {
+
+        saveData();
+
+    } catch (const exception& e) {
+
+        cout << "Error saving data: " << e.what() << "\n";
+
+    }
     cout << "Booking cancelled successfully!\n";
 }
 
@@ -528,6 +802,19 @@ void viewCurrentBooking() {
     string passengerId;
     cout << "Enter your ID: ";
     cin >> passengerId;
+if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for ID!\n";
+
+        return;
+
+    }
+
+
 
     bool found = false;
     for (const auto& b : bookings) {
@@ -559,11 +846,38 @@ void viewCurrentBooking() {
 }
 
 void postponeBooking() {
-    string bookingId, password;
+    string bookingId, verifyId;
     cout << "Enter your booking ID: ";
     cin >> bookingId;
-    cout << "Enter flight password to verify: ";
-    cin >> password;
+
+   if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for booking ID!\n";
+
+        return;
+
+    }
+
+    cout << "Enter your passenger ID to verify: ";
+
+    cin >> verifyId;
+
+    if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for passenger ID!\n";
+
+        return;
+
+    }
+
 
     auto booking = find_if(bookings.begin(), bookings.end(),
         [&bookingId](const Booking& b) { return b.bookingId == bookingId; });
@@ -573,8 +887,9 @@ void postponeBooking() {
         return;
     }
 
-    if (password != "flight123") {
-        cout << "Invalid password!\n";
+   if (booking->passengerId != verifyId) {
+
+        cout << "Invalid passenger ID! Verification failed.\n";
         return;
     }
 
@@ -587,19 +902,72 @@ void postponeBooking() {
 
         Passenger p;
         cout << "\nEnter new booking details:\n";
+             cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cout << "Name: ";
-        cin.ignore();
+        
         getline(cin, p.name);
         
+  if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for name!\n";
+
+            return;
+
+        }
+
         cout << "Passport: ";
         cin >> p.passport;
+         if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for passport!\n";
+
+            return;
+
+        }
+
         
+
         cout << "ID: ";
+
         cin >> p.id;
+
+        if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for ID!\n";
+
+            return;
+
+        }
+
         
+
         cout << "Contact: ";
+
         cin >> p.contact;
-        
+
+        if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input for contact!\n";
+
+            return;
+
+        }
         displaySeatMap(*flight);
         
         string newSeat;
@@ -607,7 +975,75 @@ void postponeBooking() {
         while (!seatBooked) {
             cout << "Choose your new seat: ";
             cin >> newSeat;
+
+        if (cin.fail()) {
+
+                cin.clear();
+
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+                cout << "Invalid input for seat!\n";
+
+                continue;
+
+            }
+
             seatBooked = bookSeat(*flight, &p, newSeat);
+
+        }
+
+
+
+        // Update passenger list with new details
+
+        auto passenger = find_if(passengers.begin(), passengers.end(),
+
+            [&booking](const Passenger& p) { return p.id == booking->passengerId; });
+
+        if (passenger != passengers.end()) {
+
+            passenger->name = p.name;
+
+            passenger->passport = p.passport;
+
+            passenger->id = p.id;
+
+            passenger->contact = p.contact;
+
+            passenger->seatNumber = newSeat;
+
+            passenger->registrationDate = getCurrentTime();
+
+        }
+
+
+
+        // Update flight passenger list
+
+        Passenger* current = flight->passengerHead;
+
+        while (current) {
+
+            if (current->id == booking->passengerId) {
+
+                current->name = p.name;
+
+                current->passport = p.passport;
+
+                current->id = p.id;
+
+                current->contact = p.contact;
+
+                current->seatNumber = newSeat;
+
+                current->registrationDate = getCurrentTime();
+
+                break;
+
+            }
+
+            current = current->next;
+
         }
 
         booking->passengerId = p.id;
@@ -615,7 +1051,15 @@ void postponeBooking() {
         booking->bookingTime = getCurrentTime();
 
         cout << "Booking postponed successfully!\n";
-        saveData();
+        try {
+
+            saveData();
+
+        } catch (const exception& e) {
+
+            cout << "Error saving data: " << e.what() << "\n";
+
+        }
     } else {
         cout << "Flight not found!\n";
     }
@@ -627,23 +1071,66 @@ bool authenticateAdmin() {
     string password;
     cout << "Enter admin password: ";
     cin >> password;
+     if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for password!\n";
+
+        return false;
+
+    }
     return password == "ela2121";
 }
 
 void addAircraft() {
     Aircraft a;
     cout << "Enter plane model: ";
-    cin.ignore();
+     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     getline(cin, a.model);
-    
+     if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for plane model!\n";
+
+        return;
+
+    }
     cout << "Enter total seats: ";
     cin >> a.totalSeats;
+      if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for total seats!\n";
+
+        return;
+
+    }
     
     cout << "Enter features (comma separated): ";
     string features;
-    cin.ignore();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     getline(cin, features);
     
+    if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for features!\n";
+
+        return;
+
+    }
     stringstream ss(features);
     string feature;
     while (getline(ss, feature, ',')) {
@@ -652,7 +1139,15 @@ void addAircraft() {
     
     aircrafts.push_back(a);
     cout << "Aircraft added successfully!\n";
-    saveData();
+     try {
+
+        saveData();
+
+    } catch (const exception& e) {
+
+        cout << "Error saving data: " << e.what() << "\n";
+
+    }
 }
 
 void addFlight() {
@@ -669,11 +1164,35 @@ void addFlight() {
     Flight f;
     cout << "\nEnter flight number: ";
     cin >> f.flightNo;
-    
+     if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for flight number!\n";
+
+        return;
+
+    }
     cout << "Select plane model: ";
     string selectedModel;
-    cin.ignore();
+     cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
     getline(cin, selectedModel);
+
+    if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for plane model!\n";
+
+        return;
+
+    }
+    
     
     auto plane = find_if(aircrafts.begin(), aircrafts.end(),
         [&selectedModel](const Aircraft& a) { return a.model == selectedModel; });
@@ -685,26 +1204,110 @@ void addFlight() {
 
     f.plane = plane->model;
     f.totalSeats = plane->totalSeats;
-    f.passengerHead = nullptr;
+
     initializeSeats(f);
     
     cout << "Enter destination: ";
     getline(cin, f.destination);
+     if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for destination!\n";
+
+        return;
+
+    }
+
     
+
     cout << "Enter day/time: ";
+
     getline(cin, f.dayTime);
+
+    if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for day/time!\n";
+
+        return;
+
+    }
+
     
+
     cout << "Enter distance: ";
+
     getline(cin, f.distance);
+
+    if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for distance!\n";
+
+        return;
+
+    }
+
     
+
     cout << "Enter duration: ";
+
     getline(cin, f.duration);
+
+    if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for duration!\n";
+
+        return;
+
+    }
+
     
+
     cout << "Enter price: $";
+
     cin >> f.price;
 
+    if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for price!\n";
+
+        return;
+
+    }
+
+
+
     flights.push_back(f);
-    saveData();
+
+    try {
+
+        saveData();
+
+    } catch (const exception& e) {
+
+        cout << "Error saving data: " << e.what() << "\n";
+
+    }
+    
+    
     cout << "Flight added successfully using " << plane->model << "!\n";
 }
 
@@ -739,8 +1342,21 @@ void deleteAircraft() {
 
     string model;
     cout << "\nEnter aircraft model to delete: ";
-    cin.ignore();
+  cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
     getline(cin, model);
+
+    if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for aircraft model!\n";
+
+        return;
+
+    }
 
     auto it = find_if(aircrafts.begin(), aircrafts.end(),
         [&model](const Aircraft& a) { return a.model == model; });
@@ -754,7 +1370,15 @@ void deleteAircraft() {
         } else {
             aircrafts.erase(it);
             cout << "Aircraft deleted successfully!\n";
-            saveData();
+               try {
+
+                saveData();
+
+            } catch (const exception& e) {
+
+                cout << "Error saving data: " << e.what() << "\n";
+
+            }
         }
     } else {
         cout << "Aircraft not found!\n";
@@ -771,22 +1395,58 @@ void deleteFlight() {
     string flightNo;
     cout << "\nEnter flight number to delete: ";
     cin >> flightNo;
+      if (cin.fail()) {
+
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for flight number!\n";
+
+        return;
+
+    }
 
     auto it = find_if(flights.begin(), flights.end(), 
         [&flightNo](const Flight& f) { return f.flightNo == flightNo; });
 
     if (it != flights.end()) {
-        // Free passenger memory
+        // Free passenger me
         Passenger* current = it->passengerHead;
         while (current) {
             Passenger* temp = current;
             current = current->next;
             delete temp;
         }
+         it->passengerHead = nullptr;
+
         
+
+        bookings.erase(
+
+            remove_if(bookings.begin(), bookings.end(),
+
+                [&flightNo](const Booking& b) { return b.flightNo == flightNo; }),
+
+            bookings.end());
+
+        
+
         flights.erase(it);
+
         cout << "Flight deleted successfully!\n";
-        saveData();
+
+        try {
+
+            saveData();
+
+        } catch (const exception& e) {
+
+            cout << "Error saving data: " << e.what() << "\n";
+
+        }
+        
+        
     } else {
         cout << "Flight not found!\n";
     }
@@ -836,7 +1496,17 @@ void adminCancelBooking() {
     string bookingId;
     cout << "Enter booking ID to cancel: ";
     cin >> bookingId;
+ if (cin.fail()) {
 
+        cin.clear();
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid input for booking ID!\n";
+
+        return;
+
+    }
     auto booking = find_if(bookings.begin(), bookings.end(), 
         [&bookingId](const Booking& b) { return b.bookingId == bookingId; });
 
@@ -853,7 +1523,15 @@ void adminCancelBooking() {
     }
 
     bookings.erase(booking);
-    saveData();
+      try {
+
+        saveData();
+
+    } catch (const exception& e) {
+
+        cout << "Error saving data: " << e.what() << "\n";
+
+    }
     cout << "Admin: Booking cancelled successfully!\n";
 
 }
@@ -890,7 +1568,17 @@ void adminMenu() {
         cout << "\n9. Return to Main Menu";
         cout << "\nEnter choice: ";
         cin >> choice;
+ if (cin.fail()) {
 
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input! Please enter a number.\n";
+
+            continue;
+
+        }
         switch (choice) {
             case 1: addAircraft(); break;
             case 2: addFlight(); break;
@@ -920,7 +1608,17 @@ void passengerMenu() {
         cout << "\n7. Back to Main Menu";
         cout << "\nEnter choice: ";
         cin >> choice;
+    if (cin.fail()) {
 
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input! Please enter a number.\n";
+
+            continue;
+
+        }
         switch (choice) {
             case 1: viewAllFlights(); break;
             case 2: searchByDestination(); break;
@@ -941,12 +1639,15 @@ int main() {
     if (flights.empty()) {
         flights = {
             {"AF101", "Cairo", "Mon 08:00 AM", "1200 km", "Boeing 737", "2h", 100, 2500.00f, nullptr, {}},
-            {"AF202", "Nairobi", "Tue 10:30 AM", "1800 km", "Airbus A320", "3h", 100, 3000.00f, nullptr, {}},
-        };
-    }
+               {"AF202", "Nairobi", "Tue 10:30 AM", "1800 km", "Airbus A320", "3h", 100, 3000.00f, nullptr, {}}
 
-    for (auto& flight : flights) {
-        initializeSeats(flight);
+        };
+
+        for (auto& flight : flights) {
+
+            initializeSeats(flight);
+
+        }
     }
     loadData();
 
@@ -959,7 +1660,17 @@ int main() {
         cout << "\n4. Exit";
         cout << "\nEnter choice: ";
         cin >> choice;
+   if (cin.fail()) {
 
+            cin.clear();
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid input! Please enter a number.\n";
+
+            continue;
+
+        }
         switch (choice) {
             case 1: adminMenu(); break;
             case 2: passengerMenu(); break;
@@ -969,7 +1680,7 @@ int main() {
         }
     } while (choice != 4);
 
-    // Cleanup
+    
     for (auto& flight : flights) {
         Passenger* current = flight.passengerHead;
         while (current) {
@@ -977,9 +1688,22 @@ int main() {
             current = current->next;
             delete temp;
         }
+          flight.passengerHead = nullptr;
+
     }
-    saveData();
+
+    try {
+
+        saveData();
+
+    } catch (const exception& e) {
+
+        cout << "Error saving data: " << e.what() << "\n";
+
+    }
+
     return 0;
+  
 }
 
 
